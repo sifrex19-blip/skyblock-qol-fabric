@@ -4,16 +4,23 @@
   "version": "0.1.0",
   "name": "Skyblock QoL",
   "description": "Informational Hypixel Skyblock QoL suite. No automation.",
-  "authors": ["you"],
+  "authors": [
+    "you"
+  ],
   "contact": {},
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
-    "client": ["com.skyblockqol.SkyblockQolClient"]
+    "client": [
+      "com.skyblockqol.SkyblockQolClient"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.19.5",
     "fabric-api": "*",
     "minecraft": "26.3"
-  }
+  },
+  "mixins": [
+    "skyblock-qol.mixins.json"
+  ]
 }
