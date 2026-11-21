@@ -3,20 +3,21 @@ package com.skyblockqol;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Tracks Skyblock skill XP from action bar lines and computes live rates. */
+/** Tracks Skyblock skill XP from action-bar lines and computes live rates. */
 public class SkillTracker {
     public static class Skill {
         public final String name;
-        public double xp, maxXp;      // from (a/b)
-        public double gained;          // total since tracking
-        public double rate;            // xp/hr (EMA)
-        public long lastGainAt;        // millis
-        public double progress;        // 0..1 through level
+        public double xp, maxXp;   // progress inside the current level
+        public double gained;       // total tracked
+        public double rate;         // xp/hr (EMA)
+        public long lastGainAt;     // millis
+        public double progress;     // 0..1 through the current level
+        public int level = 0;       // inferred: starts at 0 until seen, +1 on rollover
+        public double prevXp = -1;
         public Skill(String name) { this.name = name; }
         public double etaSeconds() {
             if (rate <= 1e-6) return -1;
-            double left = Math.max(0, maxXp - xp);
-            return left / rate * 3600.0;
+            return Math.max(0, maxXp - xp) / rate * 3600.0;
         }
     }
 
@@ -24,7 +25,6 @@ public class SkillTracker {
     private Skill current;
     private long lastEventAt;
 
-    // crop counters
     public double wheatCount;
     public double wheatPerHour;
     private long cropStart = System.currentTimeMillis();
@@ -35,7 +35,6 @@ public class SkillTracker {
         }
     }
 
-    /** Parse "+10.3 Farming (1,234/5,000)" (colour codes already stripped). */
     public void onActionBar(String raw) {
         if (raw == null) return;
         String s = Util.stripCodes(raw);
@@ -49,21 +48,35 @@ public class SkillTracker {
         String after = rest.substring(space + 1).trim();
         int sp2 = after.indexOf(' ');
         String skillName = sp2 < 0 ? after : after.substring(0, sp2);
-        // strip a trailing "(" if present
-        if (skillName.endsWith("(")) skillName = skillName.substring(0, skillName.length() - 1);
         Skill sk = find(skillName);
         if (sk == null) return;
 
+        double newXp = -1, newMax = -1;
         int lp = s.indexOf('('), rp = s.indexOf(')');
         if (lp >= 0 && rp > lp) {
-            String inside = s.substring(lp + 1, rp);
-            String[] parts = inside.split("/");
+            String[] parts = s.substring(lp + 1, rp).split("/");
             if (parts.length == 2) {
                 Double a = Util.parseNum(parts[0].trim());
                 Double b = Util.parseNum(parts[1].trim());
-                if (a != null && b != null) { sk.xp = a; sk.maxXp = b; }
+                if (a != null && b != null) { newXp = a; newMax = b; }
             }
         }
+
+        if (newXp >= 0) {
+            // Level-up inference: XP went backwards inside the level.
+            if (sk.maxXp > 0 && Math.abs(newMax - sk.maxXp) < 1e-6 && newXp + 1e-6 < sk.xp && sk.xp > 0) {
+                sk.level += 1;
+            } else if (sk.level == 0 && sk.xp == 0 && newXp > 0) {
+                // first sample: we don't know the absolute level; treat as 1-based container
+                sk.level = 1;
+            }
+            sk.xp = newXp;
+            sk.maxXp = newMax;
+            sk.progress = newMax > 0 ? Math.min(1.0, newXp / newMax) : 0;
+        } else if (sk.level == 0) {
+            sk.level = 1;
+        }
+
         long now = System.currentTimeMillis();
         if (sk.lastGainAt > 0) {
             double dtHr = (now - sk.lastGainAt) / 3600000.0;
@@ -73,20 +86,18 @@ public class SkillTracker {
             }
         }
         sk.gained += gained;
-        sk.progress = sk.maxXp > 0 ? Math.min(1.0, sk.xp / sk.maxXp) : 0;
         sk.lastGainAt = now;
         lastEventAt = now;
         current = sk;
     }
 
-    /** Count crop drops from chat, e.g. "+1 Wheat" or "Wheat +3". */
     public void onChat(String raw) {
         String s = Util.stripCodes(raw);
         String lower = s.toLowerCase();
         if (!lower.contains("wheat")) return;
         for (String tok : s.split("\\s+")) {
             Double n = Util.parseNum(tok);
-            if (n != null) { addWheat(n); break; }
+            if (n != null) { addWheat(n); return; }
         }
         int plus = s.indexOf('+');
         if (plus >= 0) {
