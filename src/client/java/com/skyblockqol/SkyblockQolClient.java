@@ -3,9 +3,13 @@ package com.skyblockqol;
 import net.fabricmc.api.ClientModInitializer;
 
 public class SkyblockQolClient implements ClientModInitializer {
+    public static final SkillTracker SKILLS = new SkillTracker();
+    public static final TimerBoard TIMERS = new TimerBoard();
+    public static final ChatRules CHAT = new ChatRules();
+
     @Override
     public void onInitializeClient() {
-        // Skyblock QoL suite - HUD rendering wired once Fabric's 26.3
-        // HudRenderCallback is available. Core logic lives in Util/SkillTracker.
+        CHAT.addRule("sea creature");
+        CHAT.addRule("slayer");
     }
 }
