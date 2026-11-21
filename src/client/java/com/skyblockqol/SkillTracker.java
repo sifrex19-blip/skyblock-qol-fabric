@@ -92,6 +92,12 @@ public class SkillTracker {
     }
 
     public void onChat(String raw) {
+        // Exact level from "SKILL LEVEL UP Farming 24➜25"
+        LevelParser.LevelUp up = LevelParser.parse(raw);
+        if (up != null) {
+            Skill sk = find(up.skill());
+            if (sk != null) sk.level = up.to();
+        }
         String s = Util.stripCodes(raw);
         String lower = s.toLowerCase();
         if (!lower.contains("wheat")) return;
