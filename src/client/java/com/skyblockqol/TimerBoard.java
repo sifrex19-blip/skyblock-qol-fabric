@@ -18,5 +18,9 @@ public class TimerBoard {
     public void tick() {
         timers.removeIf(t -> t.remaining() <= 0);
     }
+    /** Removes every running timer (console "CLEAR" button). */
+    public void clear() {
+        timers.clear();
+    }
     public List<Timer> all() { return timers; }
 }

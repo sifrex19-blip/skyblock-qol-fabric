@@ -25,6 +25,7 @@ public class HudMixin {
     private void skyblockqol$drawHud(GuiGraphicsExtractor g, DeltaTracker delta, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
+        if (!SkyblockQolClient.HUD_ENABLED) return;
         SkillTracker tracker = SkyblockQolClient.SKILLS;
         if (!tracker.recentlyActive(5000)) return;
 
